@@ -172,6 +172,10 @@ export class Prompter {
         if (prompt.includes('$SELF_PROMPT')) {
             // if active or paused, show the current goal
             let self_prompt = !this.agent.self_prompter.isStopped() ? `YOUR CURRENT ASSIGNED GOAL: "${this.agent.self_prompter.prompt}"\n` : '';
+            if (this.agent.task_notebook) {
+                const taskSummary = this.agent.task_notebook.getSummary();
+                if (taskSummary) self_prompt += taskSummary + '\n';
+            }
             prompt = prompt.replaceAll('$SELF_PROMPT', self_prompt);
         }
         if (prompt.includes('$LAST_GOALS')) {

@@ -499,4 +499,64 @@ export const actionsList = [
             await skills.useToolOn(agent.bot, tool_name, target);
         })
     },
+    {
+        name: '!addTask',
+        description: 'Add a task to the task notebook to remember it for later.',
+        params: {
+            'task': { type: 'string', description: 'Description of the task to add.' },
+            'priority': { type: 'int', description: 'Priority: 1 (high), 2 (normal), 3 (low).', domain: [1, 4, '[)'] }
+        },
+        perform: async function(agent, task, priority) {
+            const wasEmpty = agent.task_notebook.getCurrentTask() === null;
+            const result = agent.task_notebook.addTask(task, priority);
+            if (wasEmpty) {
+                agent.openChat(`Je commence : ${task}`);
+            }
+            return result;
+        }
+    },
+    {
+        name: '!taskDone',
+        description: 'Mark the current task as completed and automatically start the next one if it exists.',
+        perform: async function(agent) {
+            const { message, next } = agent.task_notebook.completeCurrentTask();
+            if (next) {
+                agent.openChat(`J'ai terminé. Je passe à : ${next.description}`);
+                setTimeout(() => {
+                    agent.handleMessage('system', `Previous task done. Next task in notebook (priority ${next.priority}): "${next.description}". Start working on it now.`);
+                }, 1000);
+                return `${message} Moving on to next task: "${next.description}".`;
+            }
+            agent.openChat(`J'ai terminé. Qu'est-ce que je peux faire d'autre ?`);
+            return `${message} Notebook is clear, no more tasks.`;
+        }
+    },
+    {
+        name: '!taskImpossible',
+        description: 'Mark the current task as impossible and explain why, then move to the next task if any.',
+        params: {
+            'reason': { type: 'string', description: 'Explanation of why the task cannot be completed.' }
+        },
+        perform: async function(agent, reason) {
+            const current = agent.task_notebook.getCurrentTask();
+            if (!current) return 'No active task in notebook.';
+            const { next } = agent.task_notebook.completeCurrentTask();
+            agent.openChat(`Je ne peux pas faire "${current.description}" : ${reason}`);
+            if (next) {
+                setTimeout(() => {
+                    agent.handleMessage('system', `Task marked impossible. Next task in notebook (priority ${next.priority}): "${next.description}". Start working on it now.`);
+                }, 1000);
+                return `Task skipped. Moving on to: "${next.description}".`;
+            }
+            agent.openChat(`Plus de tâches dans le carnet. Qu'est-ce que je peux faire d'autre ?`);
+            return 'Task skipped. Notebook is clear.';
+        }
+    },
+    {
+        name: '!listTasks',
+        description: 'List all pending tasks in the task notebook.',
+        perform: async function(agent) {
+            return agent.task_notebook.listPending();
+        }
+    },
 ];

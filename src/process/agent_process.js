@@ -42,9 +42,12 @@ export class AgentProcess {
                     console.error(`Agent process exited too quickly and will not be restarted.`);
                     return;
                 }
-                console.log('Restarting agent...');
-                this.start(true, 'Agent process restarted.', count_id, this.port);
+                const delay = 5000;
+                console.log(`Restarting agent in ${delay / 1000}s...`);
                 last_restart = Date.now();
+                setTimeout(() => {
+                    this.start(true, 'Agent process restarted.', count_id, this.port);
+                }, delay);
             }
         });
     

@@ -89,6 +89,17 @@
             {"role": "system", "content": "NEARBY_BLOCKS\n- oak_log\n- dirt\n- cobblestone"},
             {"role": "assistant", "content": "I see some oak logs, dirt, and cobblestone. I'll collect oak logs. !collectBlocks(\"oak_log\", 10)"}
         ],
+
+        [
+            {"role": "user", "content": "greg: bring me 10 oak logs"},
+            {"role": "assistant", "content": "I'll collect the oak logs and bring them to you! !collectBlocks(\"oak_log\", 10)"},
+            {"role": "system", "content": "Action output:\nCollected 10 oak_log."},
+            {"role": "assistant", "content": "Got them! Coming to you now. !goToPlayer(\"greg\", 3)"},
+            {"role": "system", "content": "Action output:\nArrived at player."},
+            {"role": "assistant", "content": "Here are your oak logs! !givePlayer(\"greg\", \"oak_log\", 10)"},
+            {"role": "system", "content": "Action output:\nYou gave greg 10 oak_log."},
+            {"role": "assistant", "content": "Done! I gave you 10 oak logs."}
+        ],
     
         [
             {"role": "user", "content": "bobby: Craft a plank"},

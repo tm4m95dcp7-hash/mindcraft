@@ -1,6 +1,6 @@
 {
     "name": "andy",
 
-    "model": "gpt-5-nano"
+    "model": "groq/llama-3.1-8b-instant"
 
 }

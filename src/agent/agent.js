@@ -17,6 +17,7 @@ import settings from './settings.js';
 import { Task } from './tasks/tasks.js';
 import { speak } from './speak.js';
 import { log, validateNameFormat, handleDisconnection } from './connection_handler.js';
+import { TaskNotebook } from './task_notebook.js';
 
 export class Agent {
     async start(load_mem=false, init_message=null, count_id=0) {
@@ -43,6 +44,7 @@ export class Agent {
         this.coder = new Coder(this);
         this.npc = new NPCContoller(this);
         this.memory_bank = new MemoryBank();
+        this.task_notebook = new TaskNotebook(this.name);
         this.self_prompter = new SelfPrompter(this);
         convoManager.initAgent(this);
         await this.prompter.initExamples();
@@ -251,6 +253,20 @@ export class Agent {
         convoManager.endAllConversations();
     }
 
+    getBotStatusInfo() {
+        const bot = this.bot;
+        const pos = bot.entity.position;
+        const posStr = `x: ${Math.round(pos.x)}, y: ${Math.round(pos.y)}, z: ${Math.round(pos.z)}`;
+        const health = `${Math.round(bot.health)}/20`;
+        const food = `${Math.round(bot.food)}/20`;
+        const hand = bot.heldItem ? `${bot.heldItem.count}x ${bot.heldItem.name}` : 'nothing';
+        const items = bot.inventory.items();
+        const invStr = items.length > 0
+            ? items.map(i => `${i.count}x ${i.name}`).join(', ')
+            : 'empty';
+        return `Position: ${posStr} | Health: ${health} | Food: ${food} | Hand: ${hand} | Inventory: ${invStr}`;
+    }
+
     async handleMessage(source, message, max_responses=null) {
         await this.checkTaskDone();
         if (!source || !message) {
@@ -311,6 +327,14 @@ export class Agent {
         // Handle other user messages
         await this.history.add(source, message);
         this.history.save();
+
+        // "?" suffix: inject bot status and force text-only response
+        const isQuestion = !self_prompt && !from_other_bot && message.trimEnd().endsWith('?');
+        if (isQuestion) {
+            const statusInfo = this.getBotStatusInfo();
+            await this.history.add('system', `[Current bot status] ${statusInfo}\nThe player asked a question. Reply in plain text only. Do NOT use any !commands.`);
+            max_responses = 1;
+        }
 
         if (!self_prompt && this.self_prompter.isActive()) // message is from user during self-prompting
             max_responses = 1; // force only respond to this message, then let self-prompting take over
@@ -479,7 +503,7 @@ export class Agent {
                 this.memory_bank.rememberPlace('last_death_position', death_pos.x, death_pos.y, death_pos.z);
                 let death_pos_text = null;
                 if (death_pos) {
-                    death_pos_text = `x: ${death_pos.x.toFixed(2)}, y: ${death_pos.y.toFixed(2)}, z: ${death_pos.x.toFixed(2)}`;
+                    death_pos_text = `x: ${death_pos.x.toFixed(2)}, y: ${death_pos.y.toFixed(2)}, z: ${death_pos.z.toFixed(2)}`;
                 }
                 let dimention = this.bot.game.dimension;
                 this.handleMessage('system', `You died at position ${death_pos_text || "unknown"} in the ${dimention} dimension with the final message: '${message}'. Your place of death is saved as 'last_death_position' if you want to return. Previous actions were stopped and you have respawned.`);

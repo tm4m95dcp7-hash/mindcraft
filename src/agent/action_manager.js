@@ -1,3 +1,5 @@
+import assert from 'assert';
+
 export class ActionManager {
     constructor(agent) {
         this.agent = agent;
@@ -60,6 +62,7 @@ export class ActionManager {
 
     async _executeAction(actionLabel, actionFn, timeout = 10) {
         let TIMEOUT;
+        let stuckInterval = null;
         try {
             if (this.last_action_time > 0) {
                 let time_diff = Date.now() - this.last_action_time;
@@ -101,10 +104,35 @@ export class ActionManager {
                 TIMEOUT = this._startTimeout(timeout);
             }
 
+            // stuck detection: interrupt if bot hasn't moved > 1 block in 15s
+            let lastPos = this.agent.bot.entity.position.clone();
+            let stuckCounter = 0;
+            stuckInterval = setInterval(() => {
+                if (!this.executing || this.agent.bot.interrupt_code) {
+                    clearInterval(stuckInterval);
+                    return;
+                }
+                const dist = this.agent.bot.entity.position.distanceTo(lastPos);
+                if (dist > 1) {
+                    lastPos = this.agent.bot.entity.position.clone();
+                    stuckCounter = 0;
+                } else {
+                    stuckCounter++;
+                    if (stuckCounter >= 3) { // 3 x 5s = 15s sans bouger
+                        console.warn('[StuckDetector] Bot stuck for 15s, interrupting.');
+                        this.agent.bot.output += '\nStuck for 15 seconds without moving. Try a different approach.\n';
+                        this.agent.openChat("Je suis bloqué, j'essaie une autre approche...");
+                        this.agent.requestInterrupt();
+                        clearInterval(stuckInterval);
+                    }
+                }
+            }, 5000);
+
             // start the action
             await actionFn();
 
             // mark action as finished + cleanup
+            clearInterval(stuckInterval);
             this.executing = false;
             this.currentActionLabel = '';
             this.currentActionFn = null;
@@ -124,6 +152,7 @@ export class ActionManager {
             // return action status report
             return { success: true, message: output, interrupted, timedout };
         } catch (err) {
+            clearInterval(stuckInterval);
             this.executing = false;
             this.currentActionLabel = '';
             this.currentActionFn = null;
