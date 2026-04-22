@@ -171,8 +171,8 @@ export class Agent {
                     console.warn('received whisper from other bot??')
                 }
                 else {
-                    let translation = await handleEnglishTranslation(message);
-                    this.handleMessage(username, translation);
+                    // handleMessage translates internally; no pre-translation needed
+                    this.handleMessage(username, message);
                 }
             } catch (error) {
                 console.error('Error handling message:', error);
@@ -326,7 +326,7 @@ export class Agent {
 
         // Handle other user messages
         await this.history.add(source, message);
-        this.history.save();
+        this.history.scheduleSave();
 
         // "?" suffix: inject bot status and force text-only response
         const isQuestion = !self_prompt && !from_other_bot && message.trimEnd().endsWith('?');
@@ -398,8 +398,8 @@ export class Agent {
                 this.routeResponse(source, res);
                 break;
             }
-            
-            this.history.save();
+
+            this.history.scheduleSave();
         }
 
         return used_command;
@@ -526,8 +526,9 @@ export class Agent {
         // This update loop ensures that each update() is called one at a time, even if it takes longer than the interval
         const INTERVAL = 300;
         let last = Date.now();
+        this._running = true;
         setTimeout(async () => {
-            while (true) {
+            while (this._running) {
                 let start = Date.now();
                 await this.update(start - last);
                 let remaining = INTERVAL - (Date.now() - start);
@@ -553,6 +554,7 @@ export class Agent {
     
 
     cleanKill(msg='Killing agent process...', code=1) {
+        this._running = false;
         this.history.add('system', msg);
         this.bot.chat(code > 1 ? 'Restarting.': 'Exiting.');
         this.history.save();

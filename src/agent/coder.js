@@ -1,4 +1,4 @@
-import { writeFile, readFile, mkdirSync } from 'fs';
+import { writeFile, readFileSync, mkdirSync } from 'fs';
 import { makeCompartment, lockdown } from './library/lockdown.js';
 import * as skills from './library/skills.js';
 import * as world from './library/world.js';
@@ -10,17 +10,8 @@ export class Coder {
         this.agent = agent;
         this.file_counter = 0;
         this.fp = '/bots/'+agent.name+'/action-code/';
-        this.code_template = '';
-        this.code_lint_template = '';
-
-        readFile('./bots/execTemplate.js', 'utf8', (err, data) => {
-            if (err) throw err;
-            this.code_template = data;
-        });
-        readFile('./bots/lintTemplate.js', 'utf8', (err, data) => {
-            if (err) throw err;
-            this.code_lint_template = data;
-        });
+        this.code_template = readFileSync('./bots/execTemplate.js', 'utf8');
+        this.code_lint_template = readFileSync('./bots/lintTemplate.js', 'utf8');
         mkdirSync('.' + this.fp, { recursive: true });
     }
 
@@ -39,7 +30,7 @@ export class Coder {
         for (let i=0; i<MAX_ATTEMPTS; i++) {
             if (this.agent.bot.interrupt_code)
                 return null;
-            const messages_copy = JSON.parse(JSON.stringify(messages));
+            const messages_copy = structuredClone(messages);
             let res = await this.agent.prompter.promptCoding(messages_copy);
             if (this.agent.bot.interrupt_code)
                 return null;
@@ -118,9 +109,9 @@ export class Coder {
         while ((match = skillRegex.exec(code)) !== null) {
             skills.push(match[1]);
         }
-        const allDocs = await this.agent.prompter.skill_libary.getAllSkillDocs();
+        const allDocs = await this.agent.prompter.skill_library.getAllSkillDocs();
         // check function exists
-        const missingSkills = skills.filter(skill => !!allDocs[skill]);
+        const missingSkills = skills.filter(skill => !allDocs[skill]);
         if (missingSkills.length > 0) {
             result += 'These functions do not exist.\n';
             result += '### FUNCTIONS NOT FOUND ###\n';
@@ -192,7 +183,7 @@ export class Coder {
         const mainFn = compartment.evaluate(src);
         
         if (write_result) {
-            console.error('Error writing code execution file: ' + result);
+            console.error('Error writing code execution file: ' + write_result);
             return null;
         }
         return { func:{main: mainFn}, src_lint_copy: src_lint_copy };

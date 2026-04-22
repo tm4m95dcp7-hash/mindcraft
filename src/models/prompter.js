@@ -90,14 +90,13 @@ export class Prompter {
             this.embedding_model = createModel({api: chat_model_profile.api});
         }
 
-        this.skill_libary = new SkillLibrary(agent, this.embedding_model);
+        this.skill_library = new SkillLibrary(agent, this.embedding_model);
         mkdirSync(`./bots/${name}`, { recursive: true });
-        writeFileSync(`./bots/${name}/last_profile.json`, JSON.stringify(this.profile, null, 4), (err) => {
-            if (err) {
-                throw new Error('Failed to save profile:', err);
-            }
-            console.log("Copy profile saved.");
-        });
+        try {
+            writeFileSync(`./bots/${name}/last_profile.json`, JSON.stringify(this.profile, null, 4));
+        } catch (err) {
+            throw new Error(`Failed to save profile: ${err.message}`);
+        }
     }
 
     getName() {
@@ -117,7 +116,7 @@ export class Prompter {
             await Promise.all([
                 this.convo_examples.load(this.profile.conversation_examples),
                 this.coding_examples.load(this.profile.coding_examples),
-                this.skill_libary.initSkillLibrary()
+                this.skill_library.initSkillLibrary()
             ]).catch(error => {
                 // Preserve error details
                 console.error('Failed to initialize examples. Error details:', error);
@@ -158,7 +157,7 @@ export class Prompter {
 
             prompt = prompt.replaceAll(
                 '$CODE_DOCS',
-                await this.skill_libary.getRelevantSkillDocs(code_task_content, settings.relevant_docs_count)
+                await this.skill_library.getRelevantSkillDocs(code_task_content, settings.relevant_docs_count)
             );
         }
         if (prompt.includes('$EXAMPLES') && examples !== null)

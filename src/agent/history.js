@@ -26,8 +26,8 @@ export class History {
         // and improves the quality of the memory summary
     }
 
-    getHistory() { // expects an Examples object
-        return JSON.parse(JSON.stringify(this.turns));
+    getHistory() {
+        return structuredClone(this.turns);
     }
 
     async summarizeMemories(turns) {
@@ -79,7 +79,19 @@ export class History {
         }
     }
 
+    scheduleSave() {
+        if (this._saveTimer) clearTimeout(this._saveTimer);
+        this._saveTimer = setTimeout(() => {
+            this._saveTimer = null;
+            this.save().catch(err => console.error('Scheduled save failed:', err));
+        }, 2000);
+    }
+
     async save() {
+        if (this._saveTimer) {
+            clearTimeout(this._saveTimer);
+            this._saveTimer = null;
+        }
         try {
             const data = {
                 memory: this.memory,
@@ -90,7 +102,6 @@ export class History {
                 last_sender: this.agent.last_sender
             };
             writeFileSync(this.memory_fp, JSON.stringify(data, null, 2));
-            console.log('Saved memory to:', this.memory_fp);
         } catch (error) {
             console.error('Failed to save history:', error);
             throw error;
